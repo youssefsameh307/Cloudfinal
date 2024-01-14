@@ -213,14 +213,9 @@ async def handle_loadbalancer_request(reader, writer):
 async def connect_to_load_balancer(cache_port):
     # Connect to the load balancer
     load_balancer_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    load_balancer_socket.connect(('localhost', 8082))  # Adjust the load balancer's address and port
+    load_balancer_socket.connect(('20.113.69.217', 8082))  # Adjust the load balancer's address and port
     load_balancer_socket.sendall(str(cache_port).encode('utf-8'))
     print(f"Sent cache_port {cache_port} to the Load Balancer")
-
-    # Perform any necessary communication with the load balancer
-    # ...
-
-    # Close the connection to the load balancer
     load_balancer_socket.close()
     print("Connection to the Load Balancer closed")
 
