@@ -36,7 +36,7 @@ class LoadBalancer:
             target_port = self.get_next_target_port(id)
             if target_port is None:
                 return 'None'
-            target_ip = self.cache_ips[target_port]
+            target_ip = self.cache_ips[target_port][0]
             client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             client_socket.connect((str(target_ip), int(target_port)))  # Adjust the cache server's address and port
             client_socket.sendall(message.encode('utf-8'))
