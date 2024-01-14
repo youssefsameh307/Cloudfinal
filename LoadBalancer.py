@@ -10,6 +10,7 @@ class LoadBalancer:
         self.load_balancer_port = load_balancer_port
         self.load_balancer_ip = load_balancer_ip
         self.cache_ports = dict([])
+        self.cache_ips = dict([])
         self.http_client_ip = http_client_ip
         self.http_client_port= http_client_port
         
@@ -35,8 +36,9 @@ class LoadBalancer:
             target_port = self.get_next_target_port(id)
             if target_port is None:
                 return 'None'
+            target_ip = self.cache_ips[target_port]
             client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            client_socket.connect(('localhost', int(target_port)))  # Adjust the cache server's address and port
+            client_socket.connect((str(target_ip), int(target_port)))  # Adjust the cache server's address and port
             client_socket.sendall(message.encode('utf-8'))
             self.cache_ports[target_port] += 1
             print(f"Sent message {message} to the Cache Server")
@@ -75,11 +77,12 @@ class LoadBalancer:
 
     def get_next_target_port(self,id):
         pool = list(self.cache_ports.keys())
-        num = self.str_hash_function(id,len(pool))
 
         if(pool == []):
             print("no cache server available")
             return None
+        
+        num = self.str_hash_function(id,len(pool))
 
         target = pool[num]
         print(f"chose target cache port based on random: {target}")
@@ -96,6 +99,7 @@ class LoadBalancer:
                     break
                 message = data.decode('utf-8')
                 self.cache_ports[message] = 0
+                self.cache_ips[message] = addr
                 print(self.cache_ports)
                 print(f"Received message from Cache Server: {message}")
         finally:
@@ -161,7 +165,7 @@ class LoadBalancer:
 
 
 async def main():
-    MyLoadBalancer = LoadBalancer('0.0.0.0',8082,'0.0.0.0',8080)
+    MyLoadBalancer = LoadBalancer('0.0.0.0',8082,'20.234.153.127',8080)
     await MyLoadBalancer.start()
 
 if __name__ == "__main__":
