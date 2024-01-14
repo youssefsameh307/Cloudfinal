@@ -60,6 +60,9 @@ class LoadBalancer:
     def str_hash_function(self,id_str, num_partitions):
         # Calculate the sum of ASCII values of characters in the ID
         key = sum(ord(char) for char in id_str)
+
+        if num_partitions==0:
+            return None
         
         # Use modulo to determine the partition number
         partition_number = key % num_partitions
