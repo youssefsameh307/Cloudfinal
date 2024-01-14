@@ -1,0 +1,29 @@
+az network vnet create --resource-group $rscgroup --name $vnet --address-prefixes 10.0.0.0/16 --subnet-name $subnet --subnet-prefixes 10.0.0.0/24
+
+
+Create a network security group with the command
+nsg=NSGcache
+az network nsg create --resource-group $rscgroup --name $nsg
+
+nic=NICcache
+
+az network nic create --resource-group $rscgroup --name $nic --vnet-name $vnet --subnet $subnet --network-security-group $nsg --public-ip-address $pubip
+
+vimage=Ubuntu2204
+adminusername=cloudvm
+vmname=VM1cache
+az vm create --resource-group $rscgroup --name $vmname --image Ubuntu2204 --admin-username $adminusername --admin-password $adminusername --nics $nic
+
+az vm open-port --port 8080 --resource-group $rscgroup --nsg-name $nsg --name $vmname --priority 102
+
+
+az vm run-command invoke --resource-group $rscgroup --name $vmname --command-id RunShellScript --scripts "sudo apt-get update && sudo apt-get install -y nginx"
+
+az vm run-command invoke --resource-group $rscgroup --name $vmname --command-id RunShellScript --scripts "sudo apt-get install python3"
+az vm run-command invoke --resource-group $rscgroup --name $vmname --command-id RunShellScript --scripts "sudo apt-get install vim"
+az vm run-command invoke --resource-group $rscgroup --name $vmname --command-id RunShellScript --scripts "yes | sudo apt-get install python3-pip"
+az vm run-command invoke --resource-group $rscgroup --name $vmname --command-id RunShellScript --scripts "sudo pip3 install aiohttp"
+az vm run-command invoke --resource-group $rscgroup --name $vmname --command-id RunShellScript --scripts "sudo apt-get -y install git"
+az vm run-command invoke --resource-group $rscgroup --name $vmname --command-id RunShellScript --scripts "git clone https://github.com/youssefsameh307/Cloudfinal.git"
+
+

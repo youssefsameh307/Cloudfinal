@@ -2,6 +2,9 @@ from aiohttp import web
 import asyncio
 import socket
 import random
+import os
+from azure.storage.blob import BlobServiceClient
+from azure.storage.blob import BlobClient
 
 
 class LoadBalancer:
@@ -13,7 +16,18 @@ class LoadBalancer:
         self.cache_ips = dict([])
         self.http_client_ip = http_client_ip
         self.http_client_port= http_client_port
-        
+        self.connection_string = "DefaultEndpointsProtocol=https;AccountName=team43project;AccountKey=ECsl3Tug62RLOD9+RAm8Swzff4izvyLgdSEjBbsh/slgGe0cqhdmptUhClOtkrymvIrY/ZMZ48hu+AStpwNLzA==;EndpointSuffix=core.windows.net"
+        self.blob_service_client = BlobServiceClient.from_connection_string(self.connection_string)
+        self.container_client = self.blob_service_client.get_container_client("cloud-project")
+
+        if True:
+            CSVfilePath = os.path.join(os.getcwd(), 'clickbench_id.csv')
+
+            with open(CSVfilePath, 'r', encoding='utf-8') as file:
+                data = file.read()
+                
+
+            self.container_client.upload_blob(name='cache_database', data=data, overwrite=True)
         
     async def start(self):
         self.cache_server_task = asyncio.create_task(self.cache_server(self.load_balancer_port))
@@ -109,13 +123,37 @@ class LoadBalancer:
             print(f"Closing connection from {addr}")
             writer.close()
 
+
+    def update_data_by_id(self, data, id, new_data):
+        lines = data.split('\n')
+        updated_lines = []
+        for line in lines:
+            parts = line.split('\t')
+            if len(parts) == 2 and parts[0] == id:
+                parts[1] = new_data
+            updated_lines.append('\t'.join(parts))
+        updated_data = '\n'.join(updated_lines)
+        return updated_data
+    
+
     async def handle_request(self,request):
         param = request.match_info['param']
         # Extract content from the HTTP request
         content = await request.text()
-        
+
+        try:
+            # Download the blob to a stream
+            data = self.blob_service_client.download_blob().readall()
+            data = data.decode('utf-8')
+            data = self.update_data_by_id(data, param, content)
+            self.container_client.upload_blob(name='cache_database', data=data)
+            print(f'changed data with id ${param} into ${content}')
+            
+        except Exception as ex:
+            print('Exception:', ex)
+
         # Send the content to the cache server via a socket
-        check = await self.send_to_cache_server('set', param, content)
+        check = await self.send_to_cache_server('set', param, content) #id, data
         if check =="None":
             return web.Response(text="No cache server available")
         if check == None:
@@ -168,7 +206,7 @@ class LoadBalancer:
 
 
 async def main():
-    MyLoadBalancer = LoadBalancer('0.0.0.0',8082,'20.234.153.127',8080)
+    MyLoadBalancer = LoadBalancer('0.0.0.0',8082,'0.0.0.0',8080)
     await MyLoadBalancer.start()
 
 if __name__ == "__main__":

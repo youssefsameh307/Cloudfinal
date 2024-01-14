@@ -3,7 +3,8 @@ import os
 import random
 import socket
 import sys
-
+from azure.storage.blob import BlobServiceClient
+from azure.storage.blob import BlobClient
 from enum import Enum
 import time
 import socket
@@ -13,7 +14,7 @@ class CacheCell:
     def __init__(self, data, meta_data):
         self.data = data
         self.meta_data = meta_data
-    
+
     def __str__(self):
         return "Data: " + str(self.data) + "\nMeta Data: " + str(self.meta_data)
     
@@ -74,6 +75,9 @@ class Cache:
         self.maxSize = maxSize
         self.patience = patience
         self.replacement_policy = replacement_policy
+        self.connection_string = "DefaultEndpointsProtocol=https;AccountName=team43project;AccountKey=ECsl3Tug62RLOD9+RAm8Swzff4izvyLgdSEjBbsh/slgGe0cqhdmptUhClOtkrymvIrY/ZMZ48hu+AStpwNLzA==;EndpointSuffix=core.windows.net"
+        self.blob_client = BlobClient.from_connection_string(self.connection_string, 'cloud-project', 'cache_database') #container name , blob name
+
         self.port = str(port)
         self.cache = dict()
         self.mode = mode
@@ -88,17 +92,39 @@ class Cache:
     def __str__(self):
         return "Max Size: " + str(self.maxSize) + "\nReplacement Policy: " + str(self.replacement_policy) + "\nCache: " + str(self.cache)
     
+    def read_blob(self):
+        try:
+            # Download the blob to a stream
+            data = self.blob_client.download_blob().readall()
+            return data
+        except Exception as ex:
+            print('Exception:', ex)
+
+
+    def contact_db(self,key):
+        # Save the file to the container
+        file_content = self.read_blob()
+        file_lines = file_content.decode('utf-8').split('\n')
+        for line in file_lines:
+            if line.startswith(key+'\t'):
+                content = line.split('\t')[1]
+                return content
+        
+        return None
+
     def get(self, key):
         print('getting key: ', key)
-        myVal = key
         if key not in self.cache.keys():
             print(self.cache)
             print("not found, contacting database")
-            rand = random.randint(0, 100) # get value from database
-            print("got value from database ", rand)
-            self.set(myVal, rand)
+            data = self.contact_db(key) # get value from database
+            if data == None:
+                print("key not found in database")
+                return None
+            print("got value from database ", data)
+            self.set(key, data)
             print('passed await')
-            return str(rand)
+            return str(data)
         self.cache[key].meta_data['last use'] = time.time()
         self.cache[key].meta_data['use count'] += 1
         return str(self.cache[key].getData())
@@ -210,10 +236,10 @@ async def handle_loadbalancer_request(reader, writer):
         print(f"Closing connection from {addr}")
         writer.close()
 
-async def connect_to_load_balancer(cache_port):
+async def connect_to_load_balancer(loadbalancer_ip,cache_port):
     # Connect to the load balancer
     load_balancer_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    load_balancer_socket.connect(('20.113.69.217', 8082))  # Adjust the load balancer's address and port
+    load_balancer_socket.connect((loadbalancer_ip, 8082))  # Adjust the load balancer's address and port
     load_balancer_socket.sendall(str(cache_port).encode('utf-8'))
     print(f"Sent cache_port {cache_port} to the Load Balancer")
     load_balancer_socket.close()
@@ -222,7 +248,10 @@ async def connect_to_load_balancer(cache_port):
 async def main(mode,cache_port):
     global myCache
     myCache = Cache(5, replacement_policy_enum.LRU, 2,cache_port, mode)
-    await connect_to_load_balancer(cache_port)
+    lbip = '20.113.69.217'
+    if mode == 'onmem':
+        lbip = 'localhost' 
+    await connect_to_load_balancer(lbip,cache_port)
     print('cache_port ', cache_port)
     server = await asyncio.start_server(
         handle_loadbalancer_request, '0.0.0.0', cache_port)  # Adjust the port as needed
