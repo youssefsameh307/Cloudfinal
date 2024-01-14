@@ -229,7 +229,8 @@ async def handle_loadbalancer_request(reader, writer):
                 myCache.set(key, data)
                 response = 'ACK'
             # fill with cache logic
-
+            if response ==None:
+                response = 'Not found'
             writer.write(response.encode('utf-8'))
             print(f"Received message from HTTP Client: {message}")
     finally:
