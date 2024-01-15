@@ -143,7 +143,7 @@ class LoadBalancer:
 
         try:
             # Download the blob to a stream
-            data = self.blob_service_client.download_blob().readall()
+            data = self.container_client.get_blob_client('cache_database').download_blob().readall()
             data = data.decode('utf-8')
             data = self.update_data_by_id(data, param, content)
             self.container_client.upload_blob(name='cache_database', data=data)
