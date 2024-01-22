@@ -20,14 +20,16 @@ class LoadBalancer:
         self.blob_service_client = BlobServiceClient.from_connection_string(self.connection_string)
         self.container_client = self.blob_service_client.get_container_client("cloud-project")
 
-        if True:
-            CSVfilePath = os.path.join(os.getcwd(), 'clickbench_id.csv')
+        # if True:
+        #     for i in range(0,30):
+        #         print('starting file upload: ', i)
+        #         currentFileName ='clickbench_id' + str(i)+'.csv'
+        #         CSVfilePath = os.path.join(os.getcwd(), currentFileName)
 
-            with open(CSVfilePath, 'r', encoding='utf-8') as file:
-                data = file.read()
-                
-
-            self.container_client.upload_blob(name='cache_database', data=data, overwrite=True)
+        #         with open(CSVfilePath, 'r', encoding='utf-8') as file:
+        #             data = file.read()
+                    
+        #         self.container_client.upload_blob(name=currentFileName, data=data, overwrite=True)
         
     async def start(self):
         self.cache_server_task = asyncio.create_task(self.cache_server(self.load_balancer_port))
@@ -140,13 +142,14 @@ class LoadBalancer:
         param = request.match_info['param']
         # Extract content from the HTTP request
         content = await request.text()
-
+        targetFileNumber = int(param) // 123333
+        targetFileName = 'clickbench_id' + str(targetFileNumber)+'.csv'
         try:
             # Download the blob to a stream
-            data = self.container_client.get_blob_client('cache_database').download_blob().readall()
+            data = self.container_client.get_blob_client(targetFileName).download_blob().readall()
             data = data.decode('utf-8')
             data = self.update_data_by_id(data, param, content)
-            self.container_client.upload_blob(name='cache_database', data=data,overwrite=True)
+            self.container_client.upload_blob(name=targetFileName, data=data,overwrite=True)
             print(f'changed data with id ${param} into ${content}')
             
         except Exception as ex:

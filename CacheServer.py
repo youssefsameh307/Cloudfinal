@@ -76,7 +76,11 @@ class Cache:
         self.patience = patience
         self.replacement_policy = replacement_policy
         self.connection_string = "DefaultEndpointsProtocol=https;AccountName=team43project;AccountKey=ECsl3Tug62RLOD9+RAm8Swzff4izvyLgdSEjBbsh/slgGe0cqhdmptUhClOtkrymvIrY/ZMZ48hu+AStpwNLzA==;EndpointSuffix=core.windows.net"
-        self.blob_client = BlobClient.from_connection_string(self.connection_string, 'cloud-project', 'cache_database') #container name , blob name
+        
+        # self.blob_client = BlobClient.from_connection_string(self.connection_string, 'cloud-project', 'cache_database') #container name , blob name
+
+        self.blob_service_client = BlobServiceClient.from_connection_string(self.connection_string)
+        self.blob_client = self.container_client = self.blob_service_client.get_container_client("cloud-project")
 
         self.port = str(port)
         self.cache = dict()
@@ -92,10 +96,11 @@ class Cache:
     def __str__(self):
         return "Max Size: " + str(self.maxSize) + "\nReplacement Policy: " + str(self.replacement_policy) + "\nCache: " + str(self.cache)
     
-    def read_blob(self):
+    def read_blob(self,fileName):
         try:
             # Download the blob to a stream
-            data = self.blob_client.download_blob().readall()
+            data = self.container_client.get_blob_client(fileName).download_blob().readall()
+            # data = self.blob_client.download_blob().readall()
             return data
         except Exception as ex:
             print('Exception:', ex)
@@ -103,7 +108,9 @@ class Cache:
 
     def contact_db(self,key):
         # Save the file to the container
-        file_content = self.read_blob()
+        targetFileNumber = int(key) // 123333
+        targetFileName = 'clickbench_id' + str(targetFileNumber)+'.csv'
+        file_content = self.read_blob(targetFileName)
         file_lines = file_content.decode('utf-8').split('\n')
         for line in file_lines:
             if line.startswith(key+'\t'):
