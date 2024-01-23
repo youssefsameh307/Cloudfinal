@@ -8,6 +8,7 @@ from azure.storage.blob import BlobClient
 from enum import Enum
 import time
 import socket
+import math
 
 
 class CacheCell:
@@ -67,8 +68,8 @@ class onDiskCacheCell:
 
 class replacement_policy_enum(Enum):
     LRU = 1
-    MRU = 2
-    LFU = 3
+    MRU = 3
+    LFU = 2
 
 class Cache:
     def __init__(self, maxSize, replacement_policy, patience,port,mode):
@@ -106,38 +107,51 @@ class Cache:
             print('Exception:', ex)
 
 
-    def contact_db(self,key):
+    def contact_db(self,key,additionalRecords):
         # Save the file to the container
         targetFileNumber = int(key) // 123333
         targetFileName = 'clickbench_id' + str(targetFileNumber)+'.csv'
         file_content = self.read_blob(targetFileName)
         file_lines = file_content.decode('utf-8').split('\n')
-        for line in file_lines:
+        additionalList = dict()
+        for i in range(len(file_lines)):
+            line = file_lines[i]
             if line.startswith(key+'\t'):
                 content = line.split('\t')[1]
-                return content
+                for j in range(max(0,i+1-additionalRecords), min(len(file_lines),i+additionalRecords+1)):
+                    nameList = file_lines[j].split('\t')
+
+                    if len(nameList) < 2:
+                        return None
+                    
+                    additionalList[nameList[0]] = nameList[1]
+                return content , additionalList
         
         return None
 
     def get(self, key):
         print('getting key: ', key)
         if key not in self.cache.keys():
-            print(self.cache)
-            print("not found, contacting database")
-            data = self.contact_db(key) # get value from database
+            # print(self.cache)
+            # print("not found, contacting database")
+            data = self.contact_db(key,2500) # get value from database
             if data == None:
                 print("key not found in database")
                 return None
-            print("got value from database ", data)
-            self.set(key, data)
+            print("got value from database ", data[0])
+            self.set(key, data[0])
+            for key1 in data[1].keys():
+                self.set(key1, data[1][key1])
+                self.cache[key1].meta_data['last use'] = time.time()
+                self.cache[key1].meta_data['use count'] += 1
             print('passed await')
-            return str(data)
+            return str(data[0])
         self.cache[key].meta_data['last use'] = time.time()
         self.cache[key].meta_data['use count'] += 1
         return str(self.cache[key].getData())
     
     def execute_cache_policy(self):
-        if self.replacement_policy == replacement_policy_enum.LRU:
+        if self.replacement_policy == 'lru':
             # Find the least recently used item
             least_recently_used = None
             for key in self.cache.keys():
@@ -156,7 +170,7 @@ class Cache:
                 except OSError as e:
                     print(f"Error deleting the file: {e}")
             del self.cache[least_recently_used]
-        elif self.replacement_policy == replacement_policy_enum.MRU:
+        elif self.replacement_policy == 'mru':
             # Find the most recently used item
             most_recently_used = None
             for key in self.cache.keys():
@@ -174,7 +188,7 @@ class Cache:
                 except OSError as e:
                     print(f"Error deleting the file: {e}")
             del self.cache[most_recently_used]
-        elif self.replacement_policy == replacement_policy_enum.LFU:
+        elif self.replacement_policy == 'lfu':
             # Find the least frequently used item
             least_frequently_used = None
             for key in self.cache.keys():
@@ -196,20 +210,20 @@ class Cache:
             raise Exception("Invalid replacement policy")
 
     def set(self, key, data):
-        print('setting key: ', key)
+        # print('setting key: ', key)
         myKey = key
         if len(self.cache) >= self.maxSize:
             self.execute_cache_policy()
             
-        print('creating new cache cell for ', myKey)
-        print(self.mode)
+        # print('creating new cache cell for ', myKey)
+        # print(self.mode)
 
         meta_data= dict()
         meta_data['last use'] = time.time()
         meta_data['use count'] = 0
         meta_data['patience'] = self.patience
         if self.mode == 'onDisk':
-            print('creating onDiskCacheCell for key: ', myKey)
+            # print('creating onDiskCacheCell for key: ', myKey)
             self.cache[myKey] = onDiskCacheCell(data, meta_data, self.path, myKey)
         else:
             self.cache[myKey] = CacheCell(data, meta_data)
@@ -253,9 +267,10 @@ async def connect_to_load_balancer(loadbalancer_ip,cache_port):
     load_balancer_socket.close()
     print("Connection to the Load Balancer closed")
 
-async def main(mode,cache_port):
+async def main(mode,cache_port,replacement_policy):
     global myCache
-    myCache = Cache(5, replacement_policy_enum.LRU, 2,cache_port, mode)
+    # myCache = Cache(5, replacement_policy_enum.LRU, 2,cache_port, mode)
+    myCache = Cache(123333*4, replacement_policy, 2,cache_port, mode)
     lbip = '20.113.69.217'
     if mode == 'onmem':
         lbip = 'localhost' 
@@ -271,10 +286,16 @@ async def main(mode,cache_port):
         await server.serve_forever()
 
 if __name__ == "__main__":
-    if len(sys.argv) != 3:
+    if len(sys.argv) != 4:
         print("Usage: python script_name.py <cache_port>")
         sys.exit(1)
 
+    rePo = ['lfu','mru','lru']
+    if sys.argv[3] not in rePo:
+        print("Usage: python script_name.py <cache_port> <replacement_policy>")
+        sys.exit(1)
+    replacement_policy = str(sys.argv[3])
+    # print(replacement_policy_enum.LRU)
     cache_port = int(sys.argv[2])
     mode = str(sys.argv[1])
-    asyncio.run(main(mode, cache_port))
+    asyncio.run(main(mode, cache_port, replacement_policy))

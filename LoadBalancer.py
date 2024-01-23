@@ -41,7 +41,7 @@ class LoadBalancer:
         print("received from cache server: ", intermediate)
         answer['data'] = intermediate.decode('utf-8')
 
-    async def send_to_cache_server(self,type,id, data=None, timeout=5):
+    async def send_to_cache_server(self,type,id, data=None, timeout=30):
         # Connect to the cache server via a socket and send the message
         message = type + '_' + id
         if type == 'set':
