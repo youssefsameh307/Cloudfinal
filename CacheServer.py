@@ -140,10 +140,10 @@ class Cache:
                 return None
             print("got value from database ", data[0])
             self.set(key, data[0])
+            print('cache size: ', len(self.cache))
+            print('additional records size: ', len(data[1].keys()))
             for key1 in data[1].keys():
                 self.set(key1, data[1][key1])
-                self.cache[key1].meta_data['last use'] = time.time()
-                self.cache[key1].meta_data['use count'] += 1
             print('passed await')
             return str(data[0])
         self.cache[key].meta_data['last use'] = time.time()
@@ -210,7 +210,7 @@ class Cache:
             raise Exception("Invalid replacement policy")
 
     def set(self, key, data):
-        # print('setting key: ', key)
+        print('setting key: ', key)
         myKey = key
         if len(self.cache) >= self.maxSize:
             self.execute_cache_policy()
@@ -270,7 +270,7 @@ async def connect_to_load_balancer(loadbalancer_ip,cache_port):
 async def main(mode,cache_port,replacement_policy):
     global myCache
     # myCache = Cache(5, replacement_policy_enum.LRU, 2,cache_port, mode)
-    myCache = Cache(123333*4, replacement_policy, 2,cache_port, mode)
+    myCache = Cache(123333*4, replacement_policy, 0,cache_port, mode)
     lbip = '20.113.69.217'
     if mode == 'onmem':
         lbip = 'localhost' 
