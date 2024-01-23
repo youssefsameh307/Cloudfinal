@@ -107,48 +107,75 @@ class Cache:
             print('Exception:', ex)
 
 
-    def contact_db(self,key,additionalRecords):
-        # Save the file to the container
+    def contact_db(self,key):
+        # Save the file to the container ---- get pages, a page contains 1000 records so a file contains 124 pages
         targetFileNumber = int(key) // 123333
         targetFileName = 'clickbench_id' + str(targetFileNumber)+'.csv'
+        
+
+        targetPageNumber = int(key) % 123333 // 1000
+        start = targetPageNumber * 1000
+        end = min(123333,start + 1000)
+
+
         file_content = self.read_blob(targetFileName)
         file_lines = file_content.decode('utf-8').split('\n')
-        additionalList = dict()
+        page = dict()
+
+        # for i in range(len(file_lines)):
+        #     line = file_lines[i]
+        #     if line.startswith(key+'\t'):
+        #         content = line.split('\t')[1]
+        #         for j in range(max(0,i+1-additionalRecords), min(len(file_lines),i+additionalRecords+1)):
+        #             nameList = file_lines[j].split('\t')
+
+        #             if len(nameList) < 2:
+        #                 return None
+                    
+        #             additionalList[nameList[0]] = nameList[1]
+        #         return content , additionalList
+        
+        print("searching for: ",start)
         for i in range(len(file_lines)):
             line = file_lines[i]
-            if line.startswith(key+'\t'):
-                content = line.split('\t')[1]
-                for j in range(max(0,i+1-additionalRecords), min(len(file_lines),i+additionalRecords+1)):
+            if i == start:
+                print('found start')
+                print(line)
+                for j in range(i,end):
                     nameList = file_lines[j].split('\t')
-
                     if len(nameList) < 2:
                         return None
-                    
-                    additionalList[nameList[0]] = nameList[1]
-                return content , additionalList
-        
-        return None
+                    page[nameList[0]] = nameList[1]
+                break
+        print('not found start')
+        if page.keys() == []:
+            return None
+        else:
+            return page
+        # return None
 
     def get(self, key):
         print('getting key: ', key)
-        if key not in self.cache.keys():
+        targetFileNumber = int(key) // 123333
+        targetPageNumber = int(key) % 123333 // 1000
+        cache_key = str(targetFileNumber) + "_" + str(targetPageNumber)
+        if cache_key not in self.cache.keys():
             # print(self.cache)
             # print("not found, contacting database")
-            data = self.contact_db(key,2500) # get value from database
-            if data == None:
+
+            data = self.contact_db(key) # get value from database
+            if data == None or data[key] == None:
                 print("key not found in database")
                 return None
-            print("got value from database ", data[0])
-            self.set(key, data[0])
-            print('cache size: ', len(self.cache))
-            print('additional records size: ', len(data[1].keys()))
-            for key1 in data[1].keys():
-                self.set(key1, data[1][key1])
+            
+            print("got value from database ", data[key])
+            self.set(key, data, True)
+
             print('passed await')
-            return str(data[0])
-        self.cache[key].meta_data['last use'] = time.time()
-        self.cache[key].meta_data['use count'] += 1
-        return str(self.cache[key].getData())
+            return str(data[key])
+        self.cache[cache_key].meta_data['last use'] = time.time()
+        self.cache[cache_key].meta_data['use count'] += 1
+        return self.cache[cache_key].data[key]
     
     def execute_cache_policy(self):
         if self.replacement_policy == 'lru':
@@ -209,24 +236,48 @@ class Cache:
         else:
             raise Exception("Invalid replacement policy")
 
-    def set(self, key, data):
+    def set(self, key, data,getFromDB=False):
         print('setting key: ', key)
         myKey = key
+
+        targetFileNumber = int(myKey) // 123333
+        targetPageNumber = int(myKey) % 123333 // 1000
+        cache_key = str(targetFileNumber) + "_" + str(targetPageNumber)      
+
         if len(self.cache) >= self.maxSize:
             self.execute_cache_policy()
             
         # print('creating new cache cell for ', myKey)
         # print(self.mode)
 
-        meta_data= dict()
-        meta_data['last use'] = time.time()
-        meta_data['use count'] = 0
-        meta_data['patience'] = self.patience
+        meta_data1= dict()
+        meta_data1['last use'] = time.time()
+        meta_data1['use count'] = 0
+        meta_data1['patience'] = self.patience
         if self.mode == 'onDisk':
             # print('creating onDiskCacheCell for key: ', myKey)
-            self.cache[myKey] = onDiskCacheCell(data, meta_data, self.path, myKey)
+            self.cache[myKey] = onDiskCacheCell(data, meta_data1, self.path, myKey)
         else:
-            self.cache[myKey] = CacheCell(data, meta_data)
+            # oldCell = self.cache[cache_key]
+            # oldMetaData = self.cache[cache_key].meta_data
+            oldUseCount = 0
+            cacheData = dict()
+
+
+            if cache_key in self.cache.keys():
+                oldUseCount = self.cache[cache_key].meta_data['use count']
+                cacheData = self.cache[cache_key].data
+
+            if getFromDB:
+                cacheData = data
+            else:
+                cacheData[myKey] = data
+
+            meta=dict()
+            meta['last use'] = time.time()
+            meta['use count'] = oldUseCount
+            meta['patience'] = self.patience
+            self.cache[cache_key] = CacheCell(cacheData, meta)
 
 
 async def handle_loadbalancer_request(reader, writer):
