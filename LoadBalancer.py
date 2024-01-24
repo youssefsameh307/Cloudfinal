@@ -101,7 +101,11 @@ class LoadBalancer:
             print("no cache server available")
             return None
         
-        num = self.str_hash_function(id,len(pool))
+        targetFileNumber = int(id) // 123333
+        targetPageNumber = int(id) % 123333 // 1000
+        cache_key = str(targetFileNumber) + "_" + str(targetPageNumber)
+
+        num = self.str_hash_function(cache_key,len(pool))
 
         target = pool[num]
         print(f"chose target cache port based on random: {target}")
