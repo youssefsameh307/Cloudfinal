@@ -157,7 +157,7 @@ class Cache:
     def get(self, key):
         print('getting key: ', key)
         targetFileNumber = int(key) // 123333
-        targetPageNumber = int(key) % 123333 // 1000
+        targetPageNumber = (int(key) % 123333) // 1000
         cache_key = str(targetFileNumber) + "_" + str(targetPageNumber)
         if cache_key not in self.cache.keys():
             # print(self.cache)
@@ -291,6 +291,7 @@ async def handle_loadbalancer_request(reader, writer):
                 break
 
             message = data.decode('utf-8')
+            print("received message: ", message)
             method = message.split('_')[0]
             key = message.split('_')[1]
             response = ''
@@ -298,7 +299,11 @@ async def handle_loadbalancer_request(reader, writer):
             if method == 'get':
                 response, found = myCache.get(key)
             else:
-                data = message.split('_')[2]
+                data = message.split('_')[2:]
+                if len(data) == 1:
+                    data = data[0]
+                else:
+                    data = '_'.join(data)
                 myCache.set(key, data)
                 response = 'ACK'
             # fill with cache logic
@@ -308,6 +313,9 @@ async def handle_loadbalancer_request(reader, writer):
                 response = found + response
             writer.write(response.encode('utf-8'))
             print(f"Received message from HTTP Client: {message}")
+    except:
+        print("received abnormal request")
+
     finally:
         print(f"Closing connection from {addr}")
         writer.close()
