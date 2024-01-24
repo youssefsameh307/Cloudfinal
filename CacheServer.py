@@ -321,7 +321,7 @@ async def connect_to_load_balancer(loadbalancer_ip,cache_port):
 async def main(mode,cache_port,replacement_policy):
     global myCache
     # myCache = Cache(5, replacement_policy_enum.LRU, 2,cache_port, mode)
-    myCache = Cache(123*2, replacement_policy, 0,cache_port, mode)
+    myCache = Cache(40, replacement_policy, 0,cache_port, mode)
     lbip = '20.113.69.217'
     if mode == 'onmem':
         lbip = 'localhost' 
