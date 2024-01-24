@@ -56,10 +56,8 @@ class LoadBalancer:
             client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             client_socket.connect((str(target_ip), int(target_port)))  # Adjust the cache server's address and port
             client_socket.sendall(message.encode('utf-8'))
-            self.cache_ports[target_port] += 1
             print(f"Sent message {message} to the Cache Server")
             await asyncio.wait_for(self.liste_for_cache_server(client_socket,answer), timeout)
-            self.cache_ports[target_port] -= 1
             return answer['data']
         except asyncio.TimeoutError:
             print(f"No response received within {timeout} seconds")
@@ -121,10 +119,15 @@ class LoadBalancer:
                 if not data:
                     break
                 message = data.decode('utf-8')
-                self.cache_ports[message] = 0
-                self.cache_ips[message] = addr
-                print(self.cache_ports)
-                print(f"Received message from Cache Server: {message}")
+                try:
+                    intMessage = int(message)
+                    self.cache_ports[message] = 0
+                    self.cache_ips[message] = addr
+                    print(self.cache_ports)
+                    print(f"Received message from Cache Server: {message}")
+                except:
+                    print(f"Received abnormal registeration request: {message}")
+
         finally:
             print(f"Closing connection from {addr}")
             writer.close()
