@@ -172,10 +172,10 @@ class Cache:
             self.set(key, data, True)
 
             print('passed await')
-            return str(data[key])
+            return str(data[key]), 'F'
         self.cache[cache_key].meta_data['last use'] = time.time()
         self.cache[cache_key].meta_data['use count'] += 1
-        return self.cache[cache_key].data[key]
+        return self.cache[cache_key].data[key], 'T'
     
     def execute_cache_policy(self):
         if self.replacement_policy == 'lru':
@@ -294,8 +294,9 @@ async def handle_loadbalancer_request(reader, writer):
             method = message.split('_')[0]
             key = message.split('_')[1]
             response = ''
+            found = None
             if method == 'get':
-                response = myCache.get(key)
+                response, found = myCache.get(key)
             else:
                 data = message.split('_')[2]
                 myCache.set(key, data)
@@ -303,6 +304,8 @@ async def handle_loadbalancer_request(reader, writer):
             # fill with cache logic
             if response ==None:
                 response = 'Not found'
+            if found != None:
+                response = found + response
             writer.write(response.encode('utf-8'))
             print(f"Received message from HTTP Client: {message}")
     finally:

@@ -177,7 +177,7 @@ class LoadBalancer:
         if check == None:
             return web.Response(text="No response received within 5 seconds")
         
-        return web.Response(text=check)
+        return web.Response(json={'hit':check[0],'data':check[1:]})
 
     async def cache_server(self,Listen_port):
         server = await asyncio.start_server(
