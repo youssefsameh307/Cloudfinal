@@ -292,7 +292,7 @@ async def handle_loadbalancer_request(reader, writer):
                 chunk = await reader.read(100)
                 if not chunk:
                     break
-                data += chunk
+                data += chunk.decode('utf-8')
             
             if not data:
                 break
