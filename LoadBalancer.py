@@ -183,7 +183,8 @@ class LoadBalancer:
             return web.Response(text="No cache server available")
         if check == None:
             return web.Response(text="No response received within 5 seconds")
-        
+        if len(check) < 2:
+            return web.Response(text="abnormal request")
         return web.json_response({'hit':check[0],'data':check[1:]})
 
     async def cache_server(self,Listen_port):
