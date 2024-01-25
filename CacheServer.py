@@ -283,7 +283,7 @@ class Cache:
 async def handle_loadbalancer_request(reader, writer):
     addr = writer.get_extra_info('peername')
     print(f"Accepted connection from {addr}")
-
+    message= None
     try:
         while True:
             data = ''
