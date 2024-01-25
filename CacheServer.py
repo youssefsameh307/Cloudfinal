@@ -283,19 +283,11 @@ class Cache:
 async def handle_loadbalancer_request(reader, writer):
     addr = writer.get_extra_info('peername')
     print(f"Accepted connection from {addr}")
-    message= None
+
     try:
         while True:
-            data = ''
-            chunk=None
-            while True:
-
-                chunk = await reader.read(100)
-                if not chunk:
-                    break
-                data += chunk.decode('utf-8')
-            
-            if not data or not chunk or chunk == None :
+            data = await reader.read(100)
+            if not data:
                 break
 
             message = data.decode('utf-8')
