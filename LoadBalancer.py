@@ -49,6 +49,7 @@ class LoadBalancer:
         answer = dict()
         client_socket = None
         try:
+            testI = int(id)
             target_port = self.get_next_target_port(id)
             if target_port is None:
                 return 'None'
@@ -66,6 +67,9 @@ class LoadBalancer:
         except ConnectionRefusedError:
             print("Connection refused")
             self.cache_ports.pop(target_port, None)  
+            return None
+        except Exception as ex:
+            print('Exception:', ex)
             return None
         finally:
             if client_socket is not None:
@@ -185,6 +189,7 @@ class LoadBalancer:
             return web.Response(text="No response received within 5 seconds")
         if len(check) < 2:
             return web.Response(text="abnormal request")
+        print("check: ", check)
         return web.json_response({'hit':check[0],'data':check[1:]})
 
     async def cache_server(self,Listen_port):
