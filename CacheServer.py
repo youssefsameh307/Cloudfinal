@@ -286,12 +286,19 @@ async def handle_loadbalancer_request(reader, writer):
 
     try:
         while True:
-            data = await reader.read(100)
+            data = ''
+            while True:
+
+                chunk = await reader.read(100)
+                if not chunk:
+                    break
+                data += chunk
+            
             if not data:
                 break
 
             message = data.decode('utf-8')
-            print("received message: ", message)
+            print("received message from HTTP Client: ", message)
             method = message.split('_')[0]
             key = message.split('_')[1]
             response = ''
@@ -312,8 +319,10 @@ async def handle_loadbalancer_request(reader, writer):
             if found != None:
                 response = found + response
             writer.write(response.encode('utf-8'))
-            print(f"Received message from HTTP Client: {message}")
-    except:
+            print(f"Finished with HTTP message : {message}")
+    except Exception as e:
+        print("exceptionL ", e)
+        print("abnormal message ", message)
         print("received abnormal request")
 
     finally:
