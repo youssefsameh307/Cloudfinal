@@ -263,7 +263,7 @@ class Cache:
         targetPageNumber = int(myKey) % 123333 // 1000
         cache_key = str(targetFileNumber) + "_" + str(targetPageNumber)      
 
-        if len(self.cache) >= self.maxSize:
+        if getFromDB and len(self.cache) >= self.maxSize:
             self.execute_cache_policy()
             
         # print('creating new cache cell for ', myKey)
