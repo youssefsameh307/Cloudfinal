@@ -284,6 +284,7 @@ async def handle_loadbalancer_request(reader, writer):
     addr = writer.get_extra_info('peername')
     print(f"Accepted connection from {addr}")
     message = None
+    response = 'Not found'
     try:
         while True:
             data = await reader.read(100)
@@ -311,10 +312,13 @@ async def handle_loadbalancer_request(reader, writer):
                 response = 'Not found'
             if found != None:
                 response = found + response
+            print("sending response: ", response)
+            print("found: ", found)
             writer.write(response.encode('utf-8'))
             print(f"Received message from HTTP Client: {message}")
     except Exception as e:
         print("read abnormal data: ",data)
+        print("response when abnormal: ", response)
         print("exceptionL ", e)
         if message != None:
             print("abnormal message ", message)

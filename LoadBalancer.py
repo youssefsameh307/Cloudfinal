@@ -39,6 +39,7 @@ class LoadBalancer:
     async def liste_for_cache_server(self,client_socket, answer):
         intermediate = client_socket.recv(1024)
         print("received from cache server: ", intermediate)
+        print("length of rec from cache server: ", len(intermediate))
         answer['data'] = intermediate.decode('utf-8')
 
     async def send_to_cache_server(self,type,id, data=None, timeout=30):
@@ -59,7 +60,8 @@ class LoadBalancer:
             client_socket.sendall(message.encode('utf-8'))
             print(f"Sent message {message} to the Cache Server")
             await asyncio.wait_for(self.liste_for_cache_server(client_socket,answer), timeout)
-            return answer['data']
+            answer = answer['data']
+            return answer
         except asyncio.TimeoutError:
             print(f"No response received within {timeout} seconds")
             self.cache_ports.pop(target_port, None)
