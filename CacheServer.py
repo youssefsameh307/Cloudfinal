@@ -255,7 +255,7 @@ class Cache:
         else:
             raise Exception("Invalid replacement policy")
 
-    def set(self, key, data,getFromDB=False):
+    def set(self, key, data, getFromDB=False):
         print('setting key: ', key)
         myKey = key
 
@@ -285,7 +285,7 @@ class Cache:
             cacheData = data
             meta=dict()
             meta['last use'] = time.time()
-            meta['use count'] = oldUseCount
+            meta['use count'] = 0
             meta['patience'] = self.patience
             self.cache[cache_key] = CacheCell(cacheData, meta)
         else:   # set
