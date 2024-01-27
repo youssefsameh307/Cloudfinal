@@ -117,10 +117,6 @@ class Cache:
         start = targetPageNumber * 1000
         end = min(123333,start + 1000)
 
-        # TODO bull purpose only
-
-        # return {i: str(i) for i in range(key,key+1000)} 
-
 
         file_content = self.read_blob(targetFileName)
         file_lines = file_content.decode('utf-8').split('\n')
@@ -288,48 +284,42 @@ async def handle_loadbalancer_request(reader, writer):
     addr = writer.get_extra_info('peername')
     print(f"Accepted connection from {addr}")
 
-    # try:
-    while True:
-        data = await reader.read(100)
-        if not data:
-            break
+    try:
+        while True:
+            data = await reader.read(100)
+            if not data:
+                break
 
-        message = data.decode('utf-8')
-        print("received message from HTTP Client: ", message)
-        method = message.split('_')[0]
-        key = message.split('_')[1]
-        response = ''
-        found = None
-
-        if method == 'get':
-            response, found = myCache.get(key)
-        else:
-            data = message.split('_')[2:]
-            if len(data) == 1:
-                data = data[0]
+            message = data.decode('utf-8')
+            print("received message: ", message)
+            method = message.split('_')[0]
+            key = message.split('_')[1]
+            response = ''
+            found = None
+            if method == 'get':
+                response, found = myCache.get(key)
             else:
-                data = '_'.join(data)
-            myCache.set(key, data)
-            response = 'ACK'
-        # fill with cache logic
+                data = message.split('_')[2:]
+                if len(data) == 1:
+                    data = data[0]
+                else:
+                    data = '_'.join(data)
+                myCache.set(key, data)
+                response = 'ACK'
+            # fill with cache logic
+            if response ==None:
+                response = 'Not found'
+            if found != None:
+                response = found + response
+            writer.write(response.encode('utf-8'))
+            print(f"Received message from HTTP Client: {message}")
+    except Exception as e:
+        print("exceptionL ", e)
+        print("abnormal message ", message)
         
-        if response ==None:
-            response = 'Not found'
-        if found != None:
-            response = found + response
-        writer.write(response.encode('utf-8'))
-        print(f"Finished with HTTP message : {message}")
+    finally:
+        print(f"Closing connection from {addr}")
         writer.close()
-
-    # except Exception as e:
-
-    #     print("exceptionL ", e)
-    #     print("abnormal message ", message)
-    #     print("received abnormal request")
-
-    # finally:
-    #     print(f"Closing connection from {addr}")
-    #     writer.close()
 
 async def connect_to_load_balancer(loadbalancer_ip,cache_port):
     # Connect to the load balancer
