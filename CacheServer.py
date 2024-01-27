@@ -108,78 +108,91 @@ class Cache:
 
 
     def contact_db(self,key):
+        try:
         # Save the file to the container ---- get pages, a page contains 1000 records so a file contains 124 pages
-        targetFileNumber = int(key) // 123333
-        targetFileName = 'clickbench_id' + str(targetFileNumber)+'.csv'
-        
+            print('contacting db for key: ', key)
+            targetFileNumber = int(key) // 123333
+            targetFileName = 'clickbench_id' + str(targetFileNumber)+'.csv'
+            
 
-        targetPageNumber = int(key) % 123333 // 1000
-        start = targetPageNumber * 1000
-        end = min(123333,start + 1000)
+            targetPageNumber = int(key) % 123333 // 1000
+            start = targetPageNumber * 1000
+            end = min(123333,start + 1000)
 
 
-        file_content = self.read_blob(targetFileName)
-        file_lines = file_content.decode('utf-8').split('\n')
-        page = dict()
+            file_content = self.read_blob(targetFileName)
+            file_lines = file_content.decode('utf-8').split('\n')
+            page = dict()
 
-        # for i in range(len(file_lines)):
-        #     line = file_lines[i]
-        #     if line.startswith(key+'\t'):
-        #         content = line.split('\t')[1]
-        #         for j in range(max(0,i+1-additionalRecords), min(len(file_lines),i+additionalRecords+1)):
-        #             nameList = file_lines[j].split('\t')
+            # for i in range(len(file_lines)):
+            #     line = file_lines[i]
+            #     if line.startswith(key+'\t'):
+            #         content = line.split('\t')[1]
+            #         for j in range(max(0,i+1-additionalRecords), min(len(file_lines),i+additionalRecords+1)):
+            #             nameList = file_lines[j].split('\t')
 
-        #             if len(nameList) < 2:
-        #                 return None
-                    
-        #             additionalList[nameList[0]] = nameList[1]
-        #         return content , additionalList
-        
-        print("searching for: ",start)
-        for i in range(len(file_lines)):
-            line = file_lines[i]
-            if i == start:
-                print('found start')
-                print(line)
-                for j in range(i,end):
-                    nameList = file_lines[j].split('\t')
-                    if len(nameList) < 2:
-                        return None
-                    page[nameList[0]] = nameList[1]
-                break
-        print('not found start')
-        if page.keys() == []:
+            #             if len(nameList) < 2:
+            #                 return None
+                        
+            #             additionalList[nameList[0]] = nameList[1]
+            #         return content , additionalList
+            
+            print("searching for: ",start)
+            for i in range(len(file_lines)):
+                line = file_lines[i]
+                if i == start:
+                    print('found start')
+                    print(line)
+                    for j in range(i,end):
+                        nameList = file_lines[j].split('\t')
+                        if len(nameList) < 2:
+                            return None
+                        page[nameList[0]] = nameList[1]
+                    break
+            print('not found start')
+            if page.keys() == []:
+                return None
+            else:
+                return page
+        except Exception as ex:
+            print('Exception in fetch:', ex)
+            print('key: ', key)
+            print('page', page)
             return None
-        else:
-            return page
         # return None
 
     def get(self, key):
-        print('getting key: ', key)
-        targetFileNumber = int(key) // 123333
-        targetPageNumber = (int(key) % 123333) // 1000
-        cache_key = str(targetFileNumber) + "_" + str(targetPageNumber)
-        if cache_key not in self.cache.keys():
-            # print(self.cache)
-            # print("not found, contacting database")
+        try:
+            print('getting key: ', key)
+            targetFileNumber = int(key) // 123333
+            targetPageNumber = (int(key) % 123333) // 1000
+            cache_key = str(targetFileNumber) + "_" + str(targetPageNumber)
+            if cache_key not in self.cache.keys():
+                # print(self.cache)
+                print("not found, contacting database")
 
-            data = self.contact_db(key) # get value from database
-            if data == None or (key not in data.keys()):
-                print("anomalous data: ",data)
-                print("for key: ", key)
-                print("for cache_key: ", cache_key)
-                print("key not found in database")
-                return None
-            
-            print("got value from database ", data[key])
-            self.set(key, data, True)
+                data = self.contact_db(key) # get value from database
+                print("finished contacting database")
+                if data == None or (key not in data.keys()):
+                    print("anomalous data: ",data)
+                    print("for key: ", key)
+                    print("for cache_key: ", cache_key)
+                    print("key not found in database")
+                    return None
+                
+                print("got value from database ", data[key])
+                self.set(key, data, True)
 
-            print('passed await')
-            return str(data[key]), 'F'
-        self.cache[cache_key].meta_data['last use'] = time.time()
-        self.cache[cache_key].meta_data['use count'] += 1
+                print('passed await')
+                return str(data[key]), 'F'
+            self.cache[cache_key].meta_data['last use'] = time.time()
+            self.cache[cache_key].meta_data['use count'] += 1
 
-        return self.cache[cache_key].data[key], 'T'
+            return self.cache[cache_key].data[key], 'T'
+        except Exception as ex:
+            print('Exception in get part:', ex)
+            print("cache_cell: ", self.cache[cache_key])
+            return None
     
     def execute_cache_policy(self):
         if self.replacement_policy == 'lru':
@@ -304,7 +317,7 @@ async def handle_loadbalancer_request(reader, writer):
             if method not in ['set','get']:
                 response = None
                 break
-            
+
             if method == 'get':
                 response, found = myCache.get(key)
             else:
