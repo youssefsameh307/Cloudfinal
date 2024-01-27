@@ -164,7 +164,10 @@ class Cache:
             # print("not found, contacting database")
 
             data = self.contact_db(key) # get value from database
-            if data == None or data[key] == None:
+            if data == None or (key not in data.keys()):
+                print("anomalous data: ",data)
+                print("for key: ", key)
+                print("for cache_key: ", cache_key)
                 print("key not found in database")
                 return None
             
@@ -175,6 +178,7 @@ class Cache:
             return str(data[key]), 'F'
         self.cache[cache_key].meta_data['last use'] = time.time()
         self.cache[cache_key].meta_data['use count'] += 1
+
         return self.cache[cache_key].data[key], 'T'
     
     def execute_cache_policy(self):
