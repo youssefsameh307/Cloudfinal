@@ -301,6 +301,10 @@ async def handle_loadbalancer_request(reader, writer):
             key = message.split('_')[1]
             response = ''
             found = None
+            if method not in ['set','get']:
+                response = None
+                break
+            
             if method == 'get':
                 response, found = myCache.get(key)
             else:
