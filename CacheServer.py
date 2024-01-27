@@ -276,7 +276,11 @@ class Cache:
         # if self.mode == 'onDisk':
         #     # print('creating onDiskCacheCell for key: ', myKey)
         #     self.cache[myKey] = onDiskCacheCell(data, meta_data1, self.path, myKey)
-            
+        
+        if not getFromDB and (not cache_key in self.cache.keys()):
+            data = self.contact_db(myKey)
+            data[myKey] = data # care here
+            getFromDB = True
 
 
         if getFromDB: # unfound get 
@@ -290,20 +294,14 @@ class Cache:
             self.cache[cache_key] = CacheCell(cacheData, meta)
         else:   # set
             print("setting data: ", data)
-
-            oldUseCount = 0
-            cacheData = dict()
-
-            if cache_key in self.cache.keys():
-                # print("size of prev cacheData: ", len(cacheData.keys()))
-                oldUseCount = self.cache[cache_key].meta_data['use count']
-                cacheData = self.cache[cache_key].getData()
-                print("size of prev cacheData: ", len(cacheData.keys()))
-            else:
-                print("didn't find key when setting")
+            # print("size of prev cacheData: ", len(cacheData.keys()))
+            oldUseCount = self.cache[cache_key].meta_data['use count']
+            cacheData = self.cache[cache_key].getData()
+            print("size of prev cacheData: ", len(cacheData.keys()))
             
             cacheData[myKey] = data
             meta=dict()
+            
             meta['last use'] = time.time()
             meta['use count'] = oldUseCount
             meta['patience'] = self.patience
@@ -345,6 +343,8 @@ async def handle_loadbalancer_request(reader, writer):
                     data = data[0]
                 else:
                     data = '_'.join(data)
+
+                
                 myCache.set(key, data)
                 response = 'ACK'
             else:
