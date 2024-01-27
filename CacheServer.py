@@ -17,7 +17,7 @@ class CacheCell:
         self.meta_data = meta_data
 
     def __str__(self):
-        return "Data: " + str(self.data) + "\nMeta Data: " + str(self.meta_data)
+        return "Data: " + str(self.data) + "\tMeta Data: " + str(self.meta_data)
     
     def getData(self):
         return self.data
@@ -44,7 +44,7 @@ class onDiskCacheCell:
             print("error writing to file")
     
     def __str__(self):
-        return "Data: " + str(self.data) + "\nMeta Data: " + str(self.meta_data) + "\nPath: " + str(self.path) + "\nKey: " + str(self.key)
+        return "Data: " + str(self.data) + "\tMeta Data: " + str(self.meta_data) + "\tPath: " + str(self.path) + "\tKey: " + str(self.key)
     
     def getData(self):
         data=None
@@ -95,7 +95,7 @@ class Cache:
             else:
                 os.mkdir(self.port)
     def __str__(self):
-        return "Max Size: " + str(self.maxSize) + "\nReplacement Policy: " + str(self.replacement_policy) + "\nCache: " + str(self.cache)
+        return "Max Size: " + str(self.maxSize) + "\tReplacement Policy: " + str(self.replacement_policy) + "\tCache: " + str(self.cache)
     
     def read_blob(self,fileName):
         try:
@@ -149,7 +149,9 @@ class Cache:
                             return None
                         page[nameList[0]] = nameList[1]
                     break
-            print('not found start')
+                if i == len(file_lines) - 1:
+                    print('not found start')
+                    return None
             if page.keys() == []:
                 return None
             else:
@@ -271,37 +273,49 @@ class Cache:
         meta_data1['last use'] = time.time()
         meta_data1['use count'] = 0
         meta_data1['patience'] = self.patience
-        if self.mode == 'onDisk':
-            # print('creating onDiskCacheCell for key: ', myKey)
-            self.cache[myKey] = onDiskCacheCell(data, meta_data1, self.path, myKey)
-        else:
-            # oldCell = self.cache[cache_key]
-            # oldMetaData = self.cache[cache_key].meta_data
-            oldUseCount = 0
-            cacheData = dict()
+        # if self.mode == 'onDisk':
+        #     # print('creating onDiskCacheCell for key: ', myKey)
+        #     self.cache[myKey] = onDiskCacheCell(data, meta_data1, self.path, myKey)
+            
 
 
-            if cache_key in self.cache.keys():
-                oldUseCount = self.cache[cache_key].meta_data['use count']
-                cacheData = self.cache[cache_key].data
-
-            if getFromDB:
-                cacheData[myKey] = data
-            else:
-                cacheData[myKey] = data
-
+        if getFromDB: # unfound get 
+            print("getting new data from DB")
+            print("size of new data: ", len(data.keys()))
+            cacheData = data
             meta=dict()
             meta['last use'] = time.time()
             meta['use count'] = oldUseCount
             meta['patience'] = self.patience
             self.cache[cache_key] = CacheCell(cacheData, meta)
+        else:   # set
+            print("setting data")
+
+            oldUseCount = 0
+            cacheData = dict()
+
+            if cache_key in self.cache.keys():
+                # print("size of prev cacheData: ", len(cacheData.keys()))
+                oldUseCount = self.cache[cache_key].meta_data['use count']
+                cacheData = self.cache[cache_key].getData()
+                print("size of prev cacheData: ", len(cacheData.keys()))
+            else:
+                print("didn't find key when setting")
+            
+            cacheData[myKey] = data
+            meta=dict()
+            meta['last use'] = time.time()
+            meta['use count'] = oldUseCount
+            meta['patience'] = self.patience
+            self.cache[cache_key] = CacheCell(cacheData, meta)
+        
 
 
 async def handle_loadbalancer_request(reader, writer):
     addr = writer.get_extra_info('peername')
-    print(f"Accepted connection from {addr}")
+    # print(f"Accepted connection from {addr}")
     message = None
-    response = 'Not found'
+    response = 'base'
     try:
         while True:
             response = 'base'
@@ -327,7 +341,6 @@ async def handle_loadbalancer_request(reader, writer):
                     data = data[0]
                 else:
                     data = '_'.join(data)
-                print("bullshit warning -----------------------------------------")
                 myCache.set(key, data)
                 response = 'ACK'
             else:
@@ -341,7 +354,6 @@ async def handle_loadbalancer_request(reader, writer):
             if found != None:
                 response = found + response
             print("sending response: ", response)
-            print("found: ", found)
             writer.write(response.encode('utf-8'))
             print(f"Received message from HTTP Client: {message}")
     except Exception as e:
@@ -352,7 +364,7 @@ async def handle_loadbalancer_request(reader, writer):
             print("abnormal message ", message)
 
     finally:
-        print(f"Closing connection from {addr}")
+        # print(f"Closing connection from {addr}")
         writer.close()
 
 async def connect_to_load_balancer(loadbalancer_ip,cache_port):
