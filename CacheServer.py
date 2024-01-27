@@ -314,6 +314,7 @@ async def handle_loadbalancer_request(reader, writer):
             writer.write(response.encode('utf-8'))
             print(f"Received message from HTTP Client: {message}")
     except Exception as e:
+        print("read abnormal data: ",data)
         print("exceptionL ", e)
         if message != None:
             print("abnormal message ", message)
