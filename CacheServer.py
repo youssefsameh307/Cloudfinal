@@ -336,6 +336,9 @@ async def handle_loadbalancer_request(reader, writer):
 
             if method == 'get':
                 response, found = myCache.get(key)
+                if response == None:
+                    break
+
             elif method == 'set':
                 data = message.split('_')[2:]
                 if len(data) == 1:
@@ -346,12 +349,9 @@ async def handle_loadbalancer_request(reader, writer):
                 response = 'ACK'
             else:
                 response = None
-                found='F'
                 break
 
             # fill with cache logic
-            if response ==None:
-                response = 'Not found'
             if found != None:
                 response = found + response
             print("sending response: ", response)
