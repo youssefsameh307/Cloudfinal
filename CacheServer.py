@@ -289,7 +289,7 @@ class Cache:
             meta['patience'] = self.patience
             self.cache[cache_key] = CacheCell(cacheData, meta)
         else:   # set
-            print("setting data")
+            print("setting data: ", data)
 
             oldUseCount = 0
             cacheData = dict()
@@ -307,6 +307,7 @@ class Cache:
             meta['last use'] = time.time()
             meta['use count'] = oldUseCount
             meta['patience'] = self.patience
+            print("final set value is: ", cacheData)
             self.cache[cache_key] = CacheCell(cacheData, meta)
         
 
