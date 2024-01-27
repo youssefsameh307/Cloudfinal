@@ -283,7 +283,7 @@ class Cache:
 async def handle_loadbalancer_request(reader, writer):
     addr = writer.get_extra_info('peername')
     print(f"Accepted connection from {addr}")
-
+    message = None
     try:
         while True:
             data = await reader.read(100)
@@ -315,8 +315,9 @@ async def handle_loadbalancer_request(reader, writer):
             print(f"Received message from HTTP Client: {message}")
     except Exception as e:
         print("exceptionL ", e)
-        print("abnormal message ", message)
-        
+        if message != None:
+            print("abnormal message ", message)
+
     finally:
         print(f"Closing connection from {addr}")
         writer.close()
