@@ -192,7 +192,7 @@ class Cache:
         except Exception as ex:
             print('Exception in get part:', ex)
             print("cache_cell: ", self.cache[cache_key])
-            return None
+            return None,None
     
     def execute_cache_policy(self):
         if self.replacement_policy == 'lru':
@@ -304,6 +304,7 @@ async def handle_loadbalancer_request(reader, writer):
     response = 'Not found'
     try:
         while True:
+            response = 'base'
             data = await reader.read(100)
             if not data:
                 break
@@ -320,14 +321,20 @@ async def handle_loadbalancer_request(reader, writer):
 
             if method == 'get':
                 response, found = myCache.get(key)
-            else:
+            elif method == 'set':
                 data = message.split('_')[2:]
                 if len(data) == 1:
                     data = data[0]
                 else:
                     data = '_'.join(data)
+                print("bullshit warning -----------------------------------------")
                 myCache.set(key, data)
                 response = 'ACK'
+            else:
+                response = None
+                found='F'
+                break
+
             # fill with cache logic
             if response ==None:
                 response = 'Not found'
