@@ -172,7 +172,7 @@ class Cache:
                 print("not found, contacting database")
 
                 data = self.contact_db(key) # get value from database
-                print("finished contacting database")
+                print("finished contacting database got data of size: ", len(data.keys()))
                 if data == None or (key not in data.keys()):
                     print("anomalous data: ",data)
                     print("for key: ", key)
@@ -286,7 +286,7 @@ class Cache:
                 cacheData = self.cache[cache_key].data
 
             if getFromDB:
-                cacheData = data
+                cacheData[myKey] = data
             else:
                 cacheData[myKey] = data
 
