@@ -319,6 +319,7 @@ async def handle_loadbalancer_request(reader, writer):
             response = found + response
         writer.write(response.encode('utf-8'))
         print(f"Finished with HTTP message : {message}")
+        writer.close()
 
     # except Exception as e:
 
