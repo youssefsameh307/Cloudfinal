@@ -188,7 +188,7 @@ class Cache:
                 data = self.contact_db(key) # get value from database
                 if data == None:
                     print("page not found")
-                    return 'Not found', 'F'
+                    return "Doesn't exist in DB", 'F'
                 print("finished contacting database got data of size: ", len(data.keys()))
                 
                 self.set(key, data, True)
@@ -198,7 +198,7 @@ class Cache:
                 # just design choice when not finding the key in the page
                 if key not in data.keys():
                     print("key not found in page")
-                    return 'Not found', 'F'
+                    return "Doesn't exist in DB", 'F'
                 
                 print("got value from database ", data[key])
 
@@ -211,7 +211,7 @@ class Cache:
             self.cache[cache_key].meta_data['use count'] += 1
             if key not in self.cache[cache_key].data.keys():
                 print("key not found in cache")
-                return 'Not found', 'F'
+                return "Doesn't exist in DB", 'F'
 
             return self.cache[cache_key].data[key], 'T'
         except Exception as ex:
