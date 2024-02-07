@@ -181,7 +181,7 @@ class Cache:
             targetFileNumber = int(key) // 123333
             targetPageNumber = (int(key) % 123333) // 1000
             cache_key = str(targetFileNumber) + "_" + str(targetPageNumber)
-            if cache_key not in self.cache.keys():
+            if cache_key not in self.cache.keys() or (key not in self.cache[cache_key].data.keys()):
                 # print(self.cache)
                 print("not found, contacting database")
 
@@ -196,9 +196,10 @@ class Cache:
 
                 ### todo: check if this block should be above the set statement, it is not incorrect 
                 # just design choice when not finding the key in the page
-                if key not in data.keys():
-                    print("key not found in page")
-                    return "Doesn't exist in DB", 'F'
+                # corrected with the condition being above
+                # if key not in data.keys():
+                #     print("key not found in page")
+                #     return "Doesn't exist in DB", 'F'
                 
                 print("got value from database ", data[key])
 
@@ -210,7 +211,8 @@ class Cache:
             self.cache[cache_key].meta_data['last use'] = time.time()
             self.cache[cache_key].meta_data['use count'] += 1
             if key not in self.cache[cache_key].data.keys():
-                print("key not found in cache")
+                print(f"key: {key} not found in cache page")
+                print("cache page: ", self.cache[cache_key].data.keys())
                 return "Doesn't exist in DB", 'F'
 
             return self.cache[cache_key].data[key], 'T'
