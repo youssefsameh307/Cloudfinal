@@ -303,6 +303,10 @@ class Cache:
         #     self.cache[myKey] = onDiskCacheCell(data, meta_data1, self.path, myKey)
         
         if not getFromDB and (not cache_key in self.cache.keys()):
+            
+            if len(self.cache) >= self.maxSize:
+                self.execute_cache_policy()
+            
             page = self.contact_db(myKey)
             if page == None:
                 page = dict()
