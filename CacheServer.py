@@ -114,16 +114,20 @@ class Cache:
             targetFileNumber = int(key) // 123333
             targetFileName = 'clickbench_id' + str(targetFileNumber)+'.csv'
             
-
             targetPageNumber = int(key) % 123333 // 1000
-            start = targetPageNumber * 1000
-            end = min(123333,start + 1000)
+            targetS = int(key) // 1000 * 1000
+            print("targetS: ",targetS)
+            start = targetS
+            endKey = targetS + 1000
 
 
             file_content = self.read_blob(targetFileName)
+            if file_content == None:
+                return None
+
             file_lines = file_content.decode('utf-8').split('\n')
             page = dict()
-
+            print("passed")
             # for i in range(len(file_lines)):
             #     line = file_lines[i]
             #     if line.startswith(key+'\t'):
@@ -137,24 +141,32 @@ class Cache:
             #             additionalList[nameList[0]] = nameList[1]
             #         return content , additionalList
             
-            print("searching for: ",start)
             for i in range(len(file_lines)):
                 line = file_lines[i]
-                if i == start:
-                    print('found start')
-                    print(line)
-                    for j in range(i,end):
-                        nameList = file_lines[j].split('\t')
-                        if len(nameList) < 2:
-                            return None
-                        page[nameList[0]] = nameList[1]
+                if line == '':
                     break
-                if i == len(file_lines) - 1:
+                nameList = line.split('\t')
+                
+                index = int(nameList[0])
+                value = nameList[1]
+
+                if index >= start and index < endKey:
+                    page[nameList[0]] = value
+
+                if index >= endKey:
                     print('not found start')
-                    return None
+                    break
+
+
+                if i == len(file_lines) - 1:
+                    print('reached end of the file')
+                    break
+                
             if page.keys() == []:
                 return None
             else:
+                print("page: ", page.keys())
+                print("page len: ", len(page.keys()))
                 return page
         except Exception as ex:
             print('Exception in fetch:', ex)
@@ -174,21 +186,32 @@ class Cache:
                 print("not found, contacting database")
 
                 data = self.contact_db(key) # get value from database
+                if data == None:
+                    print("page not found")
+                    return 'Not found', 'F'
                 print("finished contacting database got data of size: ", len(data.keys()))
-                if data == None or (key not in data.keys()):
-                    print("anomalous data: ",data)
-                    print("for key: ", key)
-                    print("for cache_key: ", cache_key)
-                    print("key not found in database")
-                    return None
+                
+                self.set(key, data, True)
+
+
+                ### todo: check if this block should be above the set statement, it is not incorrect 
+                # just design choice when not finding the key in the page
+                if key not in data.keys():
+                    print("key not found in page")
+                    return 'Not found', 'F'
                 
                 print("got value from database ", data[key])
-                self.set(key, data, True)
+
+                ###
+
 
                 print('passed await')
                 return str(data[key]), 'F'
             self.cache[cache_key].meta_data['last use'] = time.time()
             self.cache[cache_key].meta_data['use count'] += 1
+            if key not in self.cache[cache_key].data.keys():
+                print("key not found in cache")
+                return 'Not found', 'F'
 
             return self.cache[cache_key].data[key], 'T'
         except Exception as ex:
@@ -278,8 +301,12 @@ class Cache:
         #     self.cache[myKey] = onDiskCacheCell(data, meta_data1, self.path, myKey)
         
         if not getFromDB and (not cache_key in self.cache.keys()):
-            data = self.contact_db(myKey)
-            data[myKey] = data # care here
+            page = self.contact_db(myKey)
+            if page == None:
+                page = dict()
+            print("set record: ",data)
+            page[myKey] = data # care here
+            data = page
             getFromDB = True
 
 

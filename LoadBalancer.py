@@ -142,10 +142,23 @@ class LoadBalancer:
     def update_data_by_id(self, data, id, new_data):
         lines = data.split('\n')
         updated_lines = []
+
+        if data == '':
+            return id + "\t" + new_data
+        
+        inserted_flag = False
+
         for line in lines:
             parts = line.split('\t')
-            if len(parts) == 2 and parts[0] == id:
-                parts[1] = new_data
+            if len(parts) == 2:
+                if parts[0] == id:
+                    parts[1] = new_data
+                    inserted_flag = True
+                
+                if int(parts[0]) > int(id) and inserted_flag == False:
+                    updated_lines.append(id + "\t" + new_data)
+                    inserted_flag = True
+            
             updated_lines.append('\t'.join(parts))
         updated_data = '\n'.join(updated_lines)
         return updated_data
@@ -158,10 +171,14 @@ class LoadBalancer:
         targetFileNumber = int(param) // 123333
         targetFileName = 'clickbench_id' + str(targetFileNumber)+'.csv'
         try:
+            my_blob = self.container_client.get_blob_client(targetFileName)
             # Download the blob to a stream
-            data = self.container_client.get_blob_client(targetFileName).download_blob().readall()
-            data = data.decode('utf-8')
+            data = ''
+            if my_blob.exists():
+                data = my_blob.download_blob().readall()
+                data = data.decode('utf-8')
             data = self.update_data_by_id(data, param, content)
+
             self.container_client.upload_blob(name=targetFileName, data=data,overwrite=True)
             print(f'changed data with id ${param} into ${content}')
             
@@ -182,7 +199,6 @@ class LoadBalancer:
     async def handle_get_request(self,request):
         # Extract the parameter from the HTTP request
         param = request.match_info['param']
-        print(param)
         # Send the parameter to the cache server via a socket
         check = await self.send_to_cache_server("get", param)
         if check =="None":
