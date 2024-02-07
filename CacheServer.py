@@ -404,10 +404,10 @@ async def connect_to_load_balancer(loadbalancer_ip,cache_port):
     load_balancer_socket.close()
     print("Connection to the Load Balancer closed")
 
-async def main(mode,cache_port,replacement_policy):
+async def main(mode,cache_port,replacement_policy, size):
     global myCache
     # myCache = Cache(5, replacement_policy_enum.LRU, 2,cache_port, mode)
-    myCache = Cache(40, replacement_policy, 0,cache_port, mode)
+    myCache = Cache(size, replacement_policy, 0,cache_port, mode)
     lbip = '20.113.69.217'
     if mode == 'onmem':
         lbip = 'localhost' 
@@ -423,16 +423,17 @@ async def main(mode,cache_port,replacement_policy):
         await server.serve_forever()
 
 if __name__ == "__main__":
-    if len(sys.argv) != 4:
-        print("Usage: python script_name.py <cache_port>")
+    if len(sys.argv) != 5:
+        print("Usage: python CacheServer.py <on_code> <cache_port> <replacement_policy> <cache_size>")
         sys.exit(1)
 
     rePo = ['lfu','mru','lru']
     if sys.argv[3] not in rePo:
-        print("Usage: python script_name.py <cache_port> <replacement_policy>")
+        print("Usage: <replacement_policy> should be one of ['lfu','mru','lru']")
         sys.exit(1)
     replacement_policy = str(sys.argv[3])
     # print(replacement_policy_enum.LRU)
     cache_port = int(sys.argv[2])
     mode = str(sys.argv[1])
-    asyncio.run(main(mode, cache_port, replacement_policy))
+    size = int(sys.argv[4])
+    asyncio.run(main(mode, cache_port, replacement_policy,size))
